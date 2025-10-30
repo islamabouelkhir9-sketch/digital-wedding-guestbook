@@ -1,8 +1,9 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
+// استيراد الأنواع المطلوبة: User، Session، و AuthChangeEvent
 import { supabase } from './supabase';
-import { User, Session } from '@supabase/supabase-js'; // MUST import Session type
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -19,12 +20,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // FIX START: Use async/await and type assertion to resolve 'noImplicitAny' error
+    // Check active sessions (هذا الجزء تم إصلاحه في المرة السابقة)
     (async () => {
       try {
         const { data } = await supabase.auth.getSession();
-        
-        // Explicitly assert the type of the session property
         const session = data.session as Session | null; 
         
         setUser(session?.user ?? null);
@@ -34,12 +33,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
       }
     })();
-    // FIX END
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
+    // FIX START: تحديد أنواع المعاملات _event و session بشكل صريح
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event: AuthChangeEvent, session: Session | null) => {
+        setUser(session?.user ?? null);
+      }
+    );
+    // FIX END
 
     return () => subscription.unsubscribe();
   }, []);
