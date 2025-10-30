@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from './supabase';
-import { User } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js'; // MUST import Session type
 
 interface AuthContextType {
   user: User | null;
@@ -19,11 +19,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check active sessions
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // FIX START: Use async/await and type assertion to resolve 'noImplicitAny' error
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        
+        // Explicitly assert the type of the session property
+        const session = data.session as Session | null; 
+        
+        setUser(session?.user ?? null);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching session:", error);
+        setLoading(false);
+      }
+    })();
+    // FIX END
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -79,4 +90,3 @@ export function useAuth() {
   }
   return context;
 }
-
