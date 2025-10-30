@@ -6,11 +6,16 @@ import { MessageSquare, Users, Clock, TrendingUp, Eye, LogOut, Loader2 } from 'l
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation'; // تم إضافة useRouter
 
+// 🌟 الإضافة 1: تعريف Type بسيط للبيانات اللي بترجع من استعلام sendersData
+interface SenderSubmission {
+    sender_name: string;
+}
+
 interface Stats {
-  totalSubmissions: number;
-  unreadSubmissions: number;
-  totalSenders: number;
-  recentSubmissions: any[];
+    totalSubmissions: number;
+    unreadSubmissions: number;
+    totalSenders: number;
+    recentSubmissions: any[];
 }
 
 export default function DashboardPage() {
@@ -96,12 +101,16 @@ export default function DashboardPage() {
                 .eq('moderated', false);
 
             // 5. Get unique senders: فلترة يدوية إضافية للأمان
+            // 🌟 التعديل هنا: استخدام as SenderSubmission[] لتحديد نوع البيانات الراجعة
             const { data: sendersData } = await supabase
                 .from('submissions')
                 .select('sender_name')
                 .eq('event_id', currentEventId); // ⬅️ الإضافة الجديدة لفرض الفلترة
             
-            const uniqueSenders = new Set(sendersData?.map(s => s.sender_name) || []);
+            // 🌟 التعديل الرئيسي لحل مشكلة Type s: تم تطبيق SenderSubmission[] على sendersData
+            const uniqueSenders = new Set(
+                (sendersData as SenderSubmission[] | null)?.map(s => s.sender_name) || []
+            );
 
             // 6. Get recent submissions: فلترة يدوية إضافية للأمان
             const { data: recentData } = await supabase
