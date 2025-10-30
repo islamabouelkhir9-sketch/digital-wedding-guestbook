@@ -12,7 +12,7 @@ interface SubmissionModalProps {
   onSuccess: () => void;
 }
 
-type MessageType = 'text' | 'voice' | 'photo' | 'video';
+type MessageType = 'text' | 'voice' | 'image' | 'video';
 
 export default function SubmissionModal({ eventId, accentColor, onClose, onSuccess }: SubmissionModalProps) {
   const [step, setStep] = useState<'form' | 'success'>('form');
@@ -239,7 +239,7 @@ export default function SubmissionModal({ eventId, accentColor, onClose, onSucce
                     {[
                       { type: 'text' as MessageType, icon: MessageSquare, label: 'Text' },
                       { type: 'voice' as MessageType, icon: Mic, label: 'Voice' },
-                      { type: 'image' as MessageType, icon: ImageIcon, label: 'Photo' },
+                      { type: 'image' as MessageType, icon: ImageIcon, label: 'image' },
                       { type: 'video' as MessageType, icon: Video, label: 'Video' }
                     ].map(({ type, icon: Icon, label }) => (
                       <button
@@ -376,7 +376,7 @@ export default function SubmissionModal({ eventId, accentColor, onClose, onSucce
                       <div className="space-y-3">
                         {filePreview && (
                           <div className="relative rounded-lg overflow-hidden">
-                            {messageType === 'photo' ? (
+                            {messageType === 'image' ? (
                               <img src={filePreview} alt="Preview" className="w-full" />
                             ) : (
                               <video src={filePreview} controls className="w-full" />
