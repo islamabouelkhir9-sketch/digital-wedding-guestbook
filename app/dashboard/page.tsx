@@ -211,7 +211,7 @@ export default function DashboardPage() {
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin text-purple-500" />
         <p className="text-gray-600 ml-3">Verifying access and loading data...</p>
-      </div>
+        </div>
     );
   }
 
@@ -229,7 +229,6 @@ export default function DashboardPage() {
   }
 
   // Main UI
-// 💡 إصلاح 1: إضافة padding هنا، لأنه حُذف من Layout.tsx (تم نقل التعليق إلى هنا)
   return (
     <div className="w-full p-4 sm:p-6 lg:p-8"> 
       {/* Header: تم الحفاظ على تصميمك المتقن */}
@@ -272,7 +271,7 @@ export default function DashboardPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               
-                            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 hover:shadow-md transition-shadow flex flex-col justify-between h-40"
+                            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 hover:shadow-md transition-shadow flex flex-col justify-between h-32"
             >
               
               <div className="flex items-start justify-between">
@@ -291,7 +290,7 @@ export default function DashboardPage() {
         })}
       </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 **h-full** flex flex-col">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 flex flex-col">
         <div className="flex items-center justify-between mb-4 md:mb-6 flex-shrink-0">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900">Recent Submissions</h2>
           <a 
@@ -308,8 +307,8 @@ export default function DashboardPage() {
             <p className="text-gray-500 text-sm">No submissions yet</p>
           </div>
         ) : (
-          <> {/* تم إضافة Fragment هنا لحل خطأ الـ Conditional Rendering */}
-                        <div className="space-y-3 overflow-y-auto max-h-[40vh] md:max-h-[50vh] pr-2">
+          <> {/* Fragment لحل مشكلة الـ Conditional Rendering */}
+                                    <div className="space-y-3 overflow-y-auto max-h-[30vh] md:max-h-[50vh] pr-2">
               {stats.recentSubmissions.map((submission) => (
                 <a
                   href={`/dashboard/submissions?id=${submission.id}`} // رابط توجيهي للمراجعة
