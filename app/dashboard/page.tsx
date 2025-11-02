@@ -211,7 +211,7 @@ export default function DashboardPage() {
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin text-purple-500" />
         <p className="text-gray-600 ml-3">Verifying access and loading data...</p>
-        </div>
+      </div>
     );
   }
 
@@ -239,8 +239,7 @@ export default function DashboardPage() {
           <p className="text-sm text-gray-600 truncate">Welcome back! Here's what's happening with your guestbook.</p>
         </div>
         
-        {/* 💡 إصلاح 2: جعل الأزرار تستخدم نفس حجم الخط والـ padding لتبدو متناسقة */}
-        <div className="flex gap-2 w-full sm:w-auto">
+                <div className="flex gap-2 w-full sm:w-auto">
           {stats.eventSlug && (
             <a 
               href={`/event/${stats.eventSlug}`} 
@@ -263,8 +262,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Grid - 💡 إصلاح 3: تحديد ارتفاع ثابت للبطاقة (h-40) وإعادة ترتيب العناصر داخلها */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -274,8 +272,7 @@ export default function DashboardPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
               
-              {/* إضافة h-40 و flex/justify-between لتحديد ارتفاع البطاقة ومنع التمدد */}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 hover:shadow-md transition-shadow flex flex-col justify-between h-40"
+                            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 hover:shadow-md transition-shadow flex flex-col justify-between h-40"
             >
               
               <div className="flex items-start justify-between">
@@ -284,8 +281,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               
-              {/* Content Section */}
-              <div>
+                            <div>
                 <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stat.value}</h3>
                 <p className="text-xs sm:text-sm text-gray-600">{stat.title}</p>
               </div>
@@ -295,8 +291,7 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {/* Recent Submissions - 💡 إصلاح 4: تحديد ارتفاع ثابت للحاوية لتقليل الارتفاع الإجمالي */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 **h-full** flex flex-col">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 **h-full** flex flex-col">
         <div className="flex items-center justify-between mb-4 md:mb-6 flex-shrink-0">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900">Recent Submissions</h2>
           <a 
@@ -313,42 +308,43 @@ export default function DashboardPage() {
             <p className="text-gray-500 text-sm">No submissions yet</p>
           </div>
         ) : (
-          {/* 💡 إصلاح 5: جعل القائمة قابلة للتمرير داخل الحاوية */}
-          <div className="space-y-3 overflow-y-auto max-h-[40vh] md:max-h-[50vh] pr-2">
-            {stats.recentSubmissions.map((submission) => (
-              <a
-                href={`/dashboard/submissions?id=${submission.id}`} // رابط توجيهي للمراجعة
-                key={submission.id}
-                className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100 cursor-pointer"
-              >
-                <div className={`p-1.5 rounded-lg ${submission.moderated ? 'bg-green-50' : 'bg-yellow-50'} flex-shrink-0`}>
-                  <MessageSquare className={`w-4 h-4 ${submission.moderated ? 'text-green-600' : 'text-yellow-600'}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 mb-1">
-                    <h4 className="font-semibold text-sm text-gray-900 truncate">{submission.sender_name}</h4>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit sm:w-auto ${
-                        submission.moderated ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                      }`}
-                    >
-                      {submission.moderated ? 'Approved' : 'Pending'}
-                    </span>
+          <> {/* تم إضافة Fragment هنا لحل خطأ الـ Conditional Rendering */}
+                        <div className="space-y-3 overflow-y-auto max-h-[40vh] md:max-h-[50vh] pr-2">
+              {stats.recentSubmissions.map((submission) => (
+                <a
+                  href={`/dashboard/submissions?id=${submission.id}`} // رابط توجيهي للمراجعة
+                  key={submission.id}
+                  className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100 cursor-pointer"
+                >
+                  <div className={`p-1.5 rounded-lg ${submission.moderated ? 'bg-green-50' : 'bg-yellow-50'} flex-shrink-0`}>
+                    <MessageSquare className={`w-4 h-4 ${submission.moderated ? 'text-green-600' : 'text-yellow-600'}`} />
                   </div>
-                  <p className="text-xs text-gray-600 line-clamp-2">
-                    {submission.type === 'text'
-                      ? submission.content
-                      : `${submission.type.charAt(0).toUpperCase() + submission.type.slice(1)} message`}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
-                    <Clock className="w-3 h-3" />
-                    {formatDate(submission.created_at)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 mb-1">
+                      <h4 className="font-semibold text-sm text-gray-900 truncate">{submission.sender_name}</h4>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit sm:w-auto ${
+                          submission.moderated ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                        }`}
+                      >
+                        {submission.moderated ? 'Approved' : 'Pending'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 line-clamp-2">
+                      {submission.type === 'text'
+                        ? submission.content
+                        : `${submission.type.charAt(0).toUpperCase() + submission.type.slice(1)} message`}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
+                      <Clock className="w-3 h-3" />
+                      {formatDate(submission.created_at)}
+                    </div>
                   </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              </a>
-            ))}
-          </div>
+                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                </a>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>
