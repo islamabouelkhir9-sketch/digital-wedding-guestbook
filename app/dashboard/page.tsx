@@ -211,7 +211,7 @@ export default function DashboardPage() {
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin text-purple-500" />
         <p className="text-gray-600 ml-3">Verifying access and loading data...</p>
-      </div>
+        </div>
     );
   }
 
@@ -229,8 +229,8 @@ export default function DashboardPage() {
   }
 
   // Main UI
+// 💡 إصلاح 1: إضافة padding هنا، لأنه حُذف من Layout.tsx (تم نقل التعليق إلى هنا)
   return (
-    {/* 💡 إصلاح 1: إضافة padding هنا، لأنه حُذف من Layout.tsx */}
     <div className="w-full p-4 sm:p-6 lg:p-8"> 
       {/* Header: تم الحفاظ على تصميمك المتقن */}
       <div className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">

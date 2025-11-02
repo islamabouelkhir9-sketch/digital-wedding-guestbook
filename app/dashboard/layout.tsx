@@ -67,8 +67,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
   ];
 
+// 💡 إصلاح 2: إضافة h-screen لضمان أن الحاوية الرئيسية تغطي الشاشة بالكامل (تم نقل التعليق إلى هنا)
   return (
-    {/* 💡 إصلاح 2: إضافة h-screen لضمان أن الحاوية الرئيسية تغطي الشاشة بالكامل */}
     <div className="flex h-screen bg-gray-50"> 
       
       {/* 1. Sidebar (Fixed on Desktop, Off-Canvas on Mobile) */}
