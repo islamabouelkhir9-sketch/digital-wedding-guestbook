@@ -236,24 +236,30 @@ export default function DashboardPage() {
 
   // Main UI
   return (
-    <div className="p-8">
+    // 1. تم تغيير padding من p-8 (32px) إلى p-4 (16px) لتقليل الهوامش على الموبايل
+    // واستخدام sm:p-6 و md:p-8 لزيادة الهوامش على الشاشات الأكبر.
+    <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard Overview</h1>
-          <p className="text-gray-600">Welcome back! Here's what's happening with your guestbook.</p>
+      {/* 2. تم تغيير حجم الخط h1 من text-3xl إلى text-2xl على الموبايل لتوفير مساحة */}
+      <div className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Dashboard Overview</h1>
+          <p className="text-sm md:text-base text-gray-600 truncate">Welcome back! Here's what's happening with your guestbook.</p>
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+          // 3. تم تقليل حجم زر Logout على الموبايل
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition flex-shrink-0"
         >
           <LogOut className="w-4 h-4" />
-          Logout
+          <span className="hidden sm:inline">Logout</span>
         </button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* 4. تم تغيير التخطيط على الموبايل من 1 عمود إلى 2 عمود (grid-cols-2) لتحسين الاستفادة من مساحة العرض
+          (grid-cols-1 كان يترك مساحة بيضاء كبيرة). */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -262,62 +268,67 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow"
+              // 5. تم تقليل padding البطاقة من p-6 (24px) إلى p-4 (16px) على الموبايل
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                  <Icon className={`w-6 h-6 ${stat.textColor}`} />
+              <div className="flex items-start justify-between mb-3">
+                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                  {/* 6. تم تقليل حجم الأيقونة في البطاقة من w-6/h-6 إلى w-5/h-5 */}
+                  <Icon className={`w-5 h-5 ${stat.textColor}`} />
                 </div>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
-              <p className="text-sm text-gray-600">{stat.title}</p>
+              {/* 7. تم تقليل حجم القيمة من text-2xl إلى text-xl على الموبايل */}
+              <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
+              <p className="text-xs md:text-sm text-gray-600">{stat.title}</p>
             </motion.div>
           );
         })}
       </div>
 
       {/* Recent Submissions */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Recent Submissions</h2>
-          <a href="/dashboard/submissions" className="text-sm text-purple-600 hover:text-purple-700 font-medium">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6">
+        <div className="flex items-center justify-between mb-4 md:mb-6">
+          <h2 className="text-lg md:text-xl font-bold text-gray-900">Recent Submissions</h2>
+          <a href="/dashboard/submissions" className="text-xs md:text-sm text-purple-600 hover:text-purple-700 font-medium">
             View All →
           </a>
         </div>
 
         {stats.recentSubmissions.length === 0 ? (
-          <div className="text-center py-12">
-            <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-            <p className="text-gray-500">No submissions yet</p>
+          <div className="text-center py-8">
+            <MessageSquare className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+            <p className="text-gray-500 text-sm">No submissions yet</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {stats.recentSubmissions.map((submission) => (
               <div
                 key={submission.id}
-                className="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
+                // 8. تم تقليل padding البطاقة
+                className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
               >
-                <div className={`p-2 rounded-lg ${submission.moderated ? 'bg-green-50' : 'bg-yellow-50'}`}>
-                  <MessageSquare className={`w-5 h-5 ${submission.moderated ? 'text-green-600' : 'text-yellow-600'}`} />
+                <div className={`p-1.5 rounded-lg ${submission.moderated ? 'bg-green-50' : 'bg-yellow-50'} flex-shrink-0`}>
+                  {/* 9. تم تقليل حجم الأيقونة في قائمة الرسائل الحديثة من w-5/h-5 إلى w-4/h-4 */}
+                  <MessageSquare className={`w-4 h-4 ${submission.moderated ? 'text-green-600' : 'text-yellow-600'}`} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-gray-900">{submission.sender_name}</h4>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 mb-1">
+                    <h4 className="font-semibold text-sm text-gray-900 truncate">{submission.sender_name}</h4>
                     <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit sm:w-auto ${
                         submission.moderated ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                       }`}
                     >
                       {submission.moderated ? 'Approved' : 'Pending'}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600 truncate">
+                  <p className="text-xs text-gray-600 line-clamp-2">
                     {submission.type === 'text'
                       ? submission.content
                       : `${submission.type.charAt(0).toUpperCase() + submission.type.slice(1)} message`}
                   </p>
-                  <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                    <Clock className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
+                    <Clock className="w-3 h-3" />
                     {formatDate(submission.created_at)}
                   </div>
                 </div>
