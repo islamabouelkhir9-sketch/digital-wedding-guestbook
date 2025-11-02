@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { MessageSquare, Users, Clock, TrendingUp, Eye, LogOut, Loader2, Link as LinkIcon } from 'lucide-react'; // تم إضافة LinkIcon
+import { MessageSquare, Users, Clock, TrendingUp, Eye, LogOut, Loader2, Link as LinkIcon, ChevronRight } from 'lucide-react'; 
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
@@ -26,7 +26,7 @@ interface Stats {
   unreadSubmissions: number;
   totalSenders: number;
   recentSubmissions: Submission[];
-  eventSlug: string | null; // تم إضافة slug
+  eventSlug: string | null;
 }
 
 // --- Component ---
@@ -38,7 +38,7 @@ export default function DashboardPage() {
     unreadSubmissions: 0,
     totalSenders: 0,
     recentSubmissions: [],
-    eventSlug: null, // تهيئة السلاج
+    eventSlug: null,
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [user, setUser] = useState<any>(null);
@@ -48,7 +48,7 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      if (typeof window !== 'undefined') router.push('/login'); // تغيير الوجهة إلى /login
+      if (typeof window !== 'undefined') router.push('/login');
     } catch (e) {
       console.error('Logout failed:', e);
     }
@@ -71,7 +71,7 @@ export default function DashboardPage() {
 
       const currentUser = data?.user ?? null;
       if (!currentUser) {
-        if (typeof window !== 'undefined') router.push('/login'); // تغيير الوجهة إلى /login
+        if (typeof window !== 'undefined') router.push('/login');
         return;
       }
 
@@ -101,10 +101,10 @@ export default function DashboardPage() {
 
       const currentCoupleId: string | number = (userData as any).couple_id;
 
-      // 2) get event for this couple (أضفنا slug هنا)
+      // 2) get event for this couple
       const { data: eventData, error: eventError } = await supabase
         .from('events')
-        .select('id, title, slug') // تم إضافة slug
+        .select('id, title, slug')
         .eq('couple_id', currentCoupleId)
         .single();
 
@@ -113,7 +113,7 @@ export default function DashboardPage() {
       }
 
       const currentEventId: string | number = (eventData as any).id;
-      const eventSlug: string = (eventData as any).slug; // استخراج السلاج
+      const eventSlug: string = (eventData as any).slug;
 
       // 3-6) جميع الاستعلامات الأخرى (كما هي) ...
       const { count: totalCount } = await supabase
@@ -147,7 +147,7 @@ export default function DashboardPage() {
         unreadSubmissions: unreadCount || 0,
         totalSenders: uniqueSenders.size,
         recentSubmissions: (recentData as Submission[]) || [],
-        eventSlug: eventSlug, // حفظ السلاج في الحالة
+        eventSlug: eventSlug,
       });
     } catch (e: any) {
       console.error('Error loading stats:', e);
@@ -230,38 +230,41 @@ export default function DashboardPage() {
 
   // Main UI
   return (
-    <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto">
+    <div className="w-full">
       {/* Header: تم الحفاظ على تصميمك المتقن */}
-      <div className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Dashboard Overview</h1>
-          <p className="text-sm md:text-base text-gray-600 truncate">Welcome back! Here's what's happening with your guestbook.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Dashboard Overview</h1>
+          <p className="text-sm text-gray-600 truncate">Welcome back! Here's what's happening with your guestbook.</p>
         </div>
-        {/* 💡 إضافة زر "View Guestbook" */}
-        {stats.eventSlug && (
-          <a 
-            href={`/event/${stats.eventSlug}`} 
-            target="_blank"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition flex-shrink-0"
+        
+        <div className="flex gap-2 w-full sm:w-auto">
+          {/* 💡 زر "View Guestbook" */}
+          {stats.eventSlug && (
+            <a 
+              href={`/event/${stats.eventSlug}`} 
+              target="_blank"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex-shrink-0 w-1/2 sm:w-auto"
+            >
+              <LinkIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">View Guestbook</span>
+              <span className="sm:hidden">View Live</span>
+            </a>
+          )}
+          {/* زر تسجيل الخروج (أصبح هنا) */}
+          <button
+            onClick={handleLogout}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex-shrink-0 w-1/2 sm:w-auto"
           >
-            <LinkIcon className="w-4 h-4" />
-            <span className="hidden sm:inline">View Guestbook</span>
-            <span className="sm:hidden">View Live</span>
-          </a>
-        )}
-        {/* زر تسجيل الخروج (أصبح هنا) */}
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition flex-shrink-0"
-        >
-          <LogOut className="w-4 h-4" />
-          <span className="hidden sm:inline">Logout</span>
-          <span className="sm:hidden">Sign Out</span>
-        </button>
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Sign Out</span>
+            <span className="sm:hidden">Sign Out</span>
+          </button>
+        </div>
       </div>
 
-      {/* Stats Grid: تم الحفاظ على grid-cols-2 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+      {/* Stats Grid: تعديل طفيف في الخطوط والهوامش */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -270,26 +273,30 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow"
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 hover:shadow-md transition-shadow"
             >
               <div className="flex items-start justify-between mb-3">
-                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                <div className={`p-2 rounded-lg ${stat.bgColor} flex-shrink-0`}>
                   <Icon className={`w-5 h-5 ${stat.textColor}`} />
                 </div>
               </div>
-              <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">{stat.value}</h3>
-              <p className="text-xs md:text-sm text-gray-600">{stat.title}</p>
+              {/* تصغير حجم الخط على الجوال */}
+              <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stat.value}</h3>
+              <p className="text-xs sm:text-sm text-gray-600">{stat.title}</p>
             </motion.div>
           );
         })}
       </div>
 
-      {/* Recent Submissions (كما هو) */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6">
+      {/* Recent Submissions */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4 md:mb-6">
-          <h2 className="text-lg md:text-xl font-bold text-gray-900">Recent Submissions</h2>
-          <a href="/dashboard/submissions" className="text-xs md:text-sm text-purple-600 hover:text-purple-700 font-medium">
-            View All →
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">Recent Submissions</h2>
+          <a 
+            href="/dashboard/submissions" 
+            className="flex items-center gap-1 text-xs sm:text-sm text-purple-600 hover:text-purple-700 font-medium"
+          >
+            View All <ChevronRight className="w-3 h-3"/>
           </a>
         </div>
 
@@ -301,9 +308,10 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-3">
             {stats.recentSubmissions.map((submission) => (
-              <div
+              <a
+                href={`/dashboard/submissions?id=${submission.id}`} // رابط توجيهي للمراجعة
                 key={submission.id}
-                className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
+                className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100 cursor-pointer"
               >
                 <div className={`p-1.5 rounded-lg ${submission.moderated ? 'bg-green-50' : 'bg-yellow-50'} flex-shrink-0`}>
                   <MessageSquare className={`w-4 h-4 ${submission.moderated ? 'text-green-600' : 'text-yellow-600'}`} />
@@ -329,7 +337,8 @@ export default function DashboardPage() {
                     {formatDate(submission.created_at)}
                   </div>
                 </div>
-              </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              </a>
             ))}
           </div>
         )}

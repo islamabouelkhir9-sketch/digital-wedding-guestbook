@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react'; // تم إضافة useState هنا
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { Heart, LayoutDashboard, FolderOpen, Settings, LogOut, Loader2, Presentation, Menu, X } from 'lucide-react'; // تم إضافة Menu و X
+import { Heart, LayoutDashboard, FolderOpen, Settings, LogOut, Loader2, Presentation, Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -12,14 +12,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const { user, loading, signOut } = useAuth();
 
-  // 💡 حالة جديدة للتحكم في ظهور القائمة الجانبية على الجوال
+  // حالة جديدة للتحكم في ظهور القائمة الجانبية على الجوال
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
-    // 💡 إغلاق القائمة الجانبية في كل مرة يتغير فيها المسار (للتنقل على الجوال)
+    // إغلاق القائمة الجانبية عند التنقل
     setIsSidebarOpen(false); 
   }, [user, loading, router, pathname]);
 
@@ -57,24 +57,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50">
       
-      {/* 1. Sidebar for Desktop and Off-Canvas for Mobile */}
+      {/* 1. Sidebar (Fixed on Desktop, Off-Canvas on Mobile) */}
       <aside className={`
-        fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-50
+        fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-50 flex-shrink-0
         transition-transform duration-300 ease-in-out
-        lg:translate-x-0 
         ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
+        lg:translate-x-0 lg:sticky
       `}>
+        
         {/* زر إغلاق القائمة الجانبية (يظهر فقط على الجوال) */}
         <button 
-          className="absolute top-4 right-4 lg:hidden text-gray-500 hover:text-gray-700 p-2 z-50" 
+          className="absolute top-3 right-3 lg:hidden text-gray-400 hover:text-gray-700 p-2 z-50 bg-white/50 rounded-full" 
           onClick={() => setIsSidebarOpen(false)}
         >
-          <X className="w-6 h-6" />
+          <X className="w-5 h-5" />
         </button>
 
-        <div className="p-6 h-full flex flex-col justify-between">
+        <div className="p-6 h-full w-full flex flex-col justify-between">
           
           {/* Header & Navigation */}
           <div>
@@ -97,9 +98,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                    // تصغير الـ padding قليلاً على الجوال لتحسين الشكل
+                    className={`flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all ${
                       isActive
-                        ? 'bg-purple-50 text-purple-700 font-medium'
+                        ? 'bg-purple-100 text-purple-700 font-semibold' // تم تغيير اللون ليتناسب مع الخلفية البيضاء
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
@@ -119,7 +121,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-2 w-full px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="flex items-center gap-2 w-full px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm"
             >
               <LogOut className="w-4 h-4" />
               Sign Out
@@ -129,28 +131,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* 2. Main Content Area */}
-      <div className={`
-          flex flex-col min-h-screen 
-          lg:ml-64 
-          transition-all duration-300
-      `}>
+      {/* 💡 تم تصحيح الـ layout لضمان أن المحتوى يملأ المساحة المتبقية */}
+      <div className={`
+          flex flex-col flex-1 min-w-0 
+          lg:ml-64 
+          transition-all duration-300
+      `}>
 
-        {/* Top Bar for Mobile */}
-        <header className="sticky top-0 z-40 bg-white border-b border-gray-200 p-4 lg:hidden">
-            <button 
-                className="text-gray-700 hover:text-gray-900" 
-                onClick={() => setIsSidebarOpen(true)}
-            >
-                <Menu className="w-6 h-6" />
-            </button>
-            <h2 className="ml-4 font-semibold text-gray-900 inline-block">Dashboard</h2>
-        </header>
+        {/* Top Bar for Mobile */}
+        <header className="sticky top-0 z-40 bg-white border-b border-gray-200 p-4 lg:hidden">
+          <div className="flex items-center">
+              <button 
+                className="text-gray-700 hover:text-gray-900 p-1" 
+                onClick={() => setIsSidebarOpen(true)}
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+              <h2 className="ml-4 font-semibold text-gray-900">Dashboard</h2>
+          </div>
+        </header>
 
         {/* Main Content */}
-        <main className="flex-grow p-4 sm:p-6 lg:p-8"> {/* تم إضافة padding متجاوب هنا */}
+        <main className="flex-grow p-4 sm:p-6 lg:p-8">
           {children}
         </main>
-      </div>
+      </div>
 
       {/* 3. Overlay for Mobile */}
       {isSidebarOpen && (
