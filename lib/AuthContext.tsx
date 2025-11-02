@@ -1,9 +1,14 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-// استيراد الأنواع المطلوبة: User، Session، و AuthChangeEvent
 import { supabase } from './supabase';
-import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
+import {
+  User,
+  Session,
+  AuthChangeEvent,
+  SupabaseClient
+} from '@supabase/supabase-js';
+import type { Database } from '../types/supabase'; // ✅ نربطه مباشرة بالـ types الأصلي
 
 interface AuthContextType {
   user: User | null;
@@ -19,35 +24,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // ✅ supabase client typed
+  const typedSupabase = supabase as unknown as SupabaseClient<Database>;
+
   useEffect(() => {
-    // Check active sessions (هذا الجزء تم إصلاحه في المرة السابقة)
-    (async () => {
+    const getSession = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
-        const session = data.session as Session | null; 
-        
+        const { data } = await typedSupabase.auth.getSession();
+        const session = data.session as Session | null;
         setUser(session?.user ?? null);
-        setLoading(false);
       } catch (error) {
-        console.error("Error fetching session:", error);
+        console.error('Error fetching session:', error);
+      } finally {
         setLoading(false);
       }
-    })();
+    };
 
-    // Listen for auth changes
-    // FIX START: تحديد أنواع المعاملات _event و session بشكل صريح
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    getSession();
+
+    const {
+      data: { subscription },
+    } = typedSupabase.auth.onAuthStateChange(
       (_event: AuthChangeEvent, session: Session | null) => {
         setUser(session?.user ?? null);
       }
     );
-    // FIX END
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [typedSupabase]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { error } = await typedSupabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -55,31 +62,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, coupleId: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { error: signUpError } = await typedSupabase.auth.signUp({
       email,
       password,
     });
-    if (error) throw error;
+    if (signUpError) throw signUpError;
 
-    // Create user record
-    const { error: insertError } = await supabase
+    // ✅ هنا تم إصلاح النوع بحيث يتعرف على جدول users من قاعدة البيانات
+    const { error: insertError } = await typedSupabase
       .from('users')
-      .insert({
-        email,
-        couple_id: coupleId,
-        role: 'couple'
-      });
-    
+      .insert([
+        {
+          email,
+          couple_id: coupleId,
+          role: 'couple',
+        },
+      ] satisfies Database['public']['Tables']['users']['Insert'][]);
+
     if (insertError) throw insertError;
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
+    const { error } = await typedSupabase.auth.signOut();
     if (error) throw error;
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        signIn,
+        signUp,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

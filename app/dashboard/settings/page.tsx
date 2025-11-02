@@ -1,7 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 import { Save, Loader2, Link as LinkIcon, Copy, CheckCircle } from 'lucide-react';
 
 interface Event {
@@ -30,15 +35,16 @@ export default function SettingsPage() {
     loadEvent();
   }, []);
 
+  // ✅ الجزء المعدّل هنا
   const loadEvent = async () => {
     try {
       const { data, error } = await supabase
         .from('events')
-        .select('*')
+        .select('id, title, slug, settings')
         .limit(1)
-        .single();
+        .single<Event>();
 
-      if (error) throw error;
+      if (error || !data) throw error;
 
       setEvent(data);
       setTitle(data.title);
@@ -52,24 +58,37 @@ export default function SettingsPage() {
       setLoading(false);
     }
   };
+  // ✅ لحد هنا التعديل فقط
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
     try {
-      const { error } = await supabase
-        .from('events')
-        .update({
-          title,
-          slug,
-          settings: {
-            show_all_submissions: showAllSubmissions,
-            enable_notifications: enableNotifications,
-            accent_color: accentColor
-          }
-        })
-        .eq('id', event!.id);
+      interface EventUpdate {
+  title: string;
+  slug: string;
+  settings: {
+    show_all_submissions: boolean;
+    enable_notifications: boolean;
+    accent_color: string;
+  };
+}
+
+const { error } = await supabase
+  .from('events')
+  .update({
+    title,
+    slug,
+    settings: {
+      show_all_submissions: showAllSubmissions,
+      enable_notifications: enableNotifications,
+      accent_color: accentColor,
+    },
+  })
+  .eq('id', event!.id);
+
+
 
       if (error) throw error;
 
@@ -209,7 +228,7 @@ export default function SettingsPage() {
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
-                <div className="w-12 h-12 bg-gradient-to-r from-coral-400 to-pink-500 rounded-lg mx-auto mb-2"></div>
+                <div className="w-12 h-12 bg-gradient-to-r from-pink-400 to-pink-500 rounded-lg mx-auto mb-2"></div>
                 <p className="text-sm font-medium text-gray-900">Coral</p>
               </button>
             </div>
@@ -275,4 +294,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-

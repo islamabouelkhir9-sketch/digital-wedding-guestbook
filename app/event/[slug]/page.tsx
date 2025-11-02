@@ -41,13 +41,13 @@ export default function EventPage() {
       const { data: eventData, error } = await supabase
         .from('events')
         .select('*, background_image_url')
-        .eq('slug', slug)
+        .eq('slug', slug || '')
         .single();
 
       if (error) throw error;
 
-      setEvent(eventData);
-      setAccentColor(eventData.settings?.accent_color || 'gold');
+      setEvent(eventData as any);
+      setAccentColor((eventData as any)?.settings?.accent_color || 'gold');
     } catch (err) {
       console.error('Error loading event:', err);
     } finally {

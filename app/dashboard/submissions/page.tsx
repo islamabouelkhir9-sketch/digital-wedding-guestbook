@@ -99,7 +99,8 @@ export default function SubmissionsPage() {
                 throw new Error("User profile not found. Check 'users' table RLS.");
             }
             
-            const currentCoupleId = userData.couple_id;
+            const currentCoupleId = (userData as { couple_id: string }).couple_id;
+
             console.log('✅ PROFILE SUCCESS: Couple ID:', currentCoupleId); // نقطة تحقق 2
 
             // 3. جلب الـ event_id الخاص بهذا الـ couple
@@ -114,11 +115,12 @@ export default function SubmissionsPage() {
                 throw new Error("No event linked to this user's couple ID. Check 'events' table RLS.");
             }
 
-            const currentEventId = eventData.id;
+            const currentEventId = (eventData as { id: string }).id;
+
             console.log('✅ EVENT SUCCESS: Event ID:', currentEventId); // نقطة تحقق 3
 
             // 4. تحميل الرسائل باستخدام الـ event_id
-            loadSubmissions(currentEventId);
+            await loadSubmissions(currentEventId);
 
         } catch (e: any) {
             console.error('🚨 INITIAL LOAD SEQUENCE FAILED:', e.message);
@@ -145,10 +147,11 @@ export default function SubmissionsPage() {
         try {
             updateLocalSubmissions(id, 'moderated', !currentStatus);
 
-            const { error } = await supabase
-                .from('submissions')
-                .update({ moderated: !currentStatus })
-                .eq('id', id);
+const { error } = await (supabase as any)
+  .from('submissions')
+  .update({ moderated: !currentStatus })
+  .eq('id', id);
+
 
             if (error) throw error;
         } catch (error) {
@@ -160,10 +163,10 @@ export default function SubmissionsPage() {
         try {
             updateLocalSubmissions(id, 'is_favorite', !currentStatus);
 
-            const { error } = await supabase
-                .from('submissions')
-                .update({ is_favorite: !currentStatus })
-                .eq('id', id);
+            const { error } = await (supabase as any)
+  .from('submissions')
+  .update({ is_favorite: !currentStatus })
+  .eq('id', id);
 
             if (error) throw error;
         } catch (error) {

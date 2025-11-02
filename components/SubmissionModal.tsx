@@ -124,8 +124,8 @@ export default function SubmissionModal({ eventId, accentColor, onClose, onSucce
     setError(null);
 
     try {
-      let storagePath = null;
-      let storageMeta = {};
+      let storagePath: string | null = null;
+      let storageMeta: Record<string, any> = {};
 
       if (file) {
         const fileExt = file.name.split('.').pop();
@@ -140,7 +140,8 @@ export default function SubmissionModal({ eventId, accentColor, onClose, onSucce
 
         if (uploadError) throw uploadError;
 
-        storagePath = uploadData.path;
+        // uploadData.path is the stored path
+        storagePath = (uploadData as any).path ?? null;
         storageMeta = {
           size: file.size,
           type: file.type,
@@ -158,15 +159,13 @@ export default function SubmissionModal({ eventId, accentColor, onClose, onSucce
           content: messageType === 'text' ? textContent.trim() : null,
           storage_path: storagePath,
           storage_meta: storageMeta,
-          moderated: false
-        });
+          moderated: false,
+        } as any);
 
       if (insertError) throw insertError;
 
       setStep('success');
-      setTimeout(() => {
-        onSuccess();
-      }, 2000);
+      setTimeout(() => onSuccess(), 2000);
     } catch (err: any) {
       console.error('Submission error:', err);
       setError(err.message || 'Failed to submit. Please try again.');
