@@ -230,7 +230,8 @@ export default function DashboardPage() {
 
   // Main UI
   return (
-    <div className="w-full">
+    {/* 💡 إصلاح 1: إضافة padding هنا، لأنه حُذف من Layout.tsx */}
+    <div className="w-full p-4 sm:p-6 lg:p-8"> 
       {/* Header: تم الحفاظ على تصميمك المتقن */}
       <div className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex-1 min-w-0">
@@ -238,23 +239,22 @@ export default function DashboardPage() {
           <p className="text-sm text-gray-600 truncate">Welcome back! Here's what's happening with your guestbook.</p>
         </div>
         
+        {/* 💡 إصلاح 2: جعل الأزرار تستخدم نفس حجم الخط والـ padding لتبدو متناسقة */}
         <div className="flex gap-2 w-full sm:w-auto">
-          {/* 💡 زر "View Guestbook" */}
           {stats.eventSlug && (
             <a 
               href={`/event/${stats.eventSlug}`} 
               target="_blank"
-              className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex-shrink-0 w-1/2 sm:w-auto"
+              className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex-shrink-0 w-1/2 sm:w-auto"
             >
               <LinkIcon className="w-4 h-4" />
               <span className="hidden sm:inline">View Guestbook</span>
               <span className="sm:hidden">View Live</span>
             </a>
           )}
-          {/* زر تسجيل الخروج (أصبح هنا) */}
           <button
             onClick={handleLogout}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex-shrink-0 w-1/2 sm:w-auto"
+            className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex-shrink-0 w-1/2 sm:w-auto"
           >
             <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline">Sign Out</span>
@@ -263,7 +263,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Grid: تعديل طفيف في الخطوط والهوامش */}
+      {/* Stats Grid - 💡 إصلاح 3: تحديد ارتفاع ثابت للبطاقة (h-40) وإعادة ترتيب العناصر داخلها */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
@@ -273,29 +273,36 @@ export default function DashboardPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 hover:shadow-md transition-shadow"
+              
+              {/* إضافة h-40 و flex/justify-between لتحديد ارتفاع البطاقة ومنع التمدد */}
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 hover:shadow-md transition-shadow flex flex-col justify-between h-40"
             >
-              <div className="flex items-start justify-between mb-3">
+              
+              <div className="flex items-start justify-between">
                 <div className={`p-2 rounded-lg ${stat.bgColor} flex-shrink-0`}>
                   <Icon className={`w-5 h-5 ${stat.textColor}`} />
                 </div>
               </div>
-              {/* تصغير حجم الخط على الجوال */}
-              <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stat.value}</h3>
-              <p className="text-xs sm:text-sm text-gray-600">{stat.title}</p>
+              
+              {/* Content Section */}
+              <div>
+                <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stat.value}</h3>
+                <p className="text-xs sm:text-sm text-gray-600">{stat.title}</p>
+              </div>
+              
             </motion.div>
           );
         })}
       </div>
 
-      {/* Recent Submissions */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
-        <div className="flex items-center justify-between mb-4 md:mb-6">
+      {/* Recent Submissions - 💡 إصلاح 4: تحديد ارتفاع ثابت للحاوية لتقليل الارتفاع الإجمالي */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 **h-full** flex flex-col">
+        <div className="flex items-center justify-between mb-4 md:mb-6 flex-shrink-0">
           <h2 className="text-lg sm:text-xl font-bold text-gray-900">Recent Submissions</h2>
           <a 
-            href="/dashboard/submissions" 
-            className="flex items-center gap-1 text-xs sm:text-sm text-purple-600 hover:text-purple-700 font-medium"
-          >
+            href="/dashboard/submissions" 
+            className="flex items-center gap-1 text-xs sm:text-sm text-purple-600 hover:text-purple-700 font-medium"
+          >
             View All <ChevronRight className="w-3 h-3"/>
           </a>
         </div>
@@ -306,10 +313,11 @@ export default function DashboardPage() {
             <p className="text-gray-500 text-sm">No submissions yet</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          {/* 💡 إصلاح 5: جعل القائمة قابلة للتمرير داخل الحاوية */}
+          <div className="space-y-3 overflow-y-auto max-h-[40vh] md:max-h-[50vh] pr-2">
             {stats.recentSubmissions.map((submission) => (
               <a
-                href={`/dashboard/submissions?id=${submission.id}`} // رابط توجيهي للمراجعة
+                href={`/dashboard/submissions?id=${submission.id}`} // رابط توجيهي للمراجعة
                 key={submission.id}
                 className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100 cursor-pointer"
               >
@@ -337,7 +345,7 @@ export default function DashboardPage() {
                     {formatDate(submission.created_at)}
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
               </a>
             ))}
           </div>

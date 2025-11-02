@@ -27,8 +27,7 @@ const cleanStoragePath = (path: string | null): string | null => {
     return cleaned;
 };
 
-// 📌 مكون زر الإجراءات (ActionButton) - *جديد*
-// يُستخدم لتبسيط كود عرض الرسائل
+// 📌 مكون زر الإجراءات (ActionButton)
 const ActionButton = ({ onClick, status, IconOn, IconOff, titleOn, titleOff, colorOn, colorOff, isToggle = true, fillOn = false }: any) => {
     const Icon = (isToggle && !status) ? IconOff : IconOn;
     const title = (isToggle && !status) ? titleOff : titleOn;
@@ -46,7 +45,7 @@ const ActionButton = ({ onClick, status, IconOn, IconOff, titleOn, titleOff, col
     );
 };
 
-// 📌 مكون عرض الوسائط (SubmissionMediaViewer) - *جديد*
+// 📌 مكون عرض الوسائط (SubmissionMediaViewer)
 function SubmissionMediaViewer({ submission }: { submission: Submission }) {
     const [mediaUrl, setMediaUrl] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
@@ -101,6 +100,7 @@ function SubmissionMediaViewer({ submission }: { submission: Submission }) {
     }
     
     if (mediaUrl) {
+        // تم تحديث الـ max-h-80 إلى max-h-96 ليكون العرض أفضل على شاشات التفاصيل الكبيرة
         if (submission.type === 'voice') {
             return (
                 <audio controls className="w-full rounded-lg">
@@ -115,14 +115,14 @@ function SubmissionMediaViewer({ submission }: { submission: Submission }) {
                 <img 
                     src={mediaUrl} 
                     alt="Submission" 
-                    className="w-full rounded-lg max-h-80 object-contain bg-gray-100"
+                    className="w-full rounded-lg max-h-96 object-contain bg-gray-100"
                 />
             );
         }
 
         if (submission.type === 'video') {
             return (
-                <video controls className="w-full rounded-lg max-h-80">
+                <video controls className="w-full rounded-lg max-h-96">
                     <source src={mediaUrl} />
                     Your browser does not support the video tag.
                 </video>
@@ -147,7 +147,7 @@ export default function SubmissionsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // دالة تسجيل الخروج
+    // دالة تسجيل الخروج (لم تتغير)
     const handleLogout = async () => {
         await supabase.auth.signOut();
         router.push('/');
@@ -331,7 +331,7 @@ export default function SubmissionsPage() {
         }
     };
 
-    // التجميع حسب المرسل يحدث في كل مرة تتغير فيها 'submissions'
+    // التجميع حسب المرسل (لم يتغير)
     useEffect(() => {
         const grouped = submissions.reduce((acc, submission) => {
             const sender = submission.sender_name;
@@ -401,9 +401,9 @@ export default function SubmissionsPage() {
     }
 
     return (
-        <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto min-h-screen">
+        <div className="p-4 sm:p-6 md:p-8 w-full min-h-screen">
             {/* Header */}
-            <div className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="max-w-7xl mx-auto mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className='flex-1 min-w-0'>
                     <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Submissions</h1>
                     <p className="text-sm text-gray-600 truncate">Browse and manage all guest submissions organized by sender.</p>
@@ -418,14 +418,15 @@ export default function SubmissionsPage() {
             </div>
 
             {/* Main Content: Two-Column Layout (Responsive) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 {/* Sender List (Sidebar) */}
                 <div 
                     className={`
-                        ${selectedSender ? 'hidden lg:block' : 'block'} 
+                        ${selectedSender ? 'hidden' : 'block'} 
+                        lg:block 
                         col-span-12 lg:col-span-4 bg-white rounded-xl shadow-sm border border-gray-100 p-4 lg:p-6 
-                        min-h-[calc(100vh-140px)] lg:min-h-0
+                        min-h-[calc(100vh-140px)] 
                     `}
                 >
                     <h2 className="text-xl font-bold text-gray-900 mb-4 hidden lg:block">Guest List</h2>
@@ -443,7 +444,7 @@ export default function SubmissionsPage() {
                         </div>
                     </div>
 
-                    <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto lg:max-h-[600px]">
+                    <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto lg:max-h-[70vh]">
                         {filteredSenders.length === 0 ? (
                             <div className="text-center py-8">
                                 <FolderOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -487,9 +488,10 @@ export default function SubmissionsPage() {
                 {/* Submission Details */}
                 <div 
                     className={`
-                        ${selectedSender ? 'block' : 'hidden lg:block'} 
+                        ${selectedSender ? 'block' : 'hidden'} 
+                        lg:block 
                         col-span-12 lg:col-span-8 bg-white rounded-xl shadow-sm border border-gray-100 p-4 lg:p-6
-                        min-h-[calc(100vh-140px)] lg:min-h-0
+                        min-h-[calc(100vh-140px)] 
                     `}
                 >
                     {!selectedSender ? (
@@ -522,7 +524,7 @@ export default function SubmissionsPage() {
                             </div>
 
                             {/* List of Submissions for the Selected Sender */}
-                            <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto lg:max-h-[600px]">
+                            <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto lg:max-h-[70vh]">
                                 {groupedSubmissions[selectedSender]?.map((submission) => (
                                     <motion.div
                                         key={submission.id}

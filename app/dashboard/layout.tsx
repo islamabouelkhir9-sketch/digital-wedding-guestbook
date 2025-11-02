@@ -12,16 +12,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const { user, loading, signOut } = useAuth();
 
-  // حالة جديدة للتحكم في ظهور القائمة الجانبية على الجوال
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
-    // إغلاق القائمة الجانبية عند التنقل
     setIsSidebarOpen(false); 
-  }, [user, loading, router, pathname]);
+    
+    // 💡 إصلاح 1: تعطيل تمرير الجسم عند فتح القائمة الجانبية على الجوال
+    if (isSidebarOpen && window.innerWidth < 1024) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+
+    return () => {
+      // إعادة تفعيل التمرير عند إزالة المكون
+      document.body.style.overflow = 'auto'; 
+    };
+
+  }, [user, loading, router, pathname, isSidebarOpen]); // أضفت isSidebarOpen كاعتماد
 
   const handleSignOut = async () => {
     try {
@@ -57,17 +68,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ];
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    {/* 💡 إصلاح 2: إضافة h-screen لضمان أن الحاوية الرئيسية تغطي الشاشة بالكامل */}
+    <div className="flex h-screen bg-gray-50"> 
       
       {/* 1. Sidebar (Fixed on Desktop, Off-Canvas on Mobile) */}
       <aside className={`
         fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-50 flex-shrink-0
         transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
-        lg:translate-x-0 lg:sticky
+        lg:translate-x-0 lg:sticky 
       `}>
         
-        {/* زر إغلاق القائمة الجانبية (يظهر فقط على الجوال) */}
         <button 
           className="absolute top-3 right-3 lg:hidden text-gray-400 hover:text-gray-700 p-2 z-50 bg-white/50 rounded-full" 
           onClick={() => setIsSidebarOpen(false)}
@@ -75,10 +86,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <X className="w-5 h-5" />
         </button>
 
-        <div className="p-6 h-full w-full flex flex-col justify-between">
+        {/* 💡 إصلاح 3: جعل محتوى الشريط الجانبي قابلاً للتمرير إذا أصبح طويلاً جداً */}
+        <div className="p-6 h-full w-full flex flex-col justify-between overflow-y-auto">
           
           {/* Header & Navigation */}
           <div>
+            {/* باقي الكود هنا... */}
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-purple-500 rounded-lg flex items-center justify-center">
                 <Heart className="w-6 h-6 text-white fill-white" />
@@ -98,10 +111,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   <Link
                     key={item.href}
                     href={item.href}
-                    // تصغير الـ padding قليلاً على الجوال لتحسين الشكل
                     className={`flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all ${
                       isActive
-                        ? 'bg-purple-100 text-purple-700 font-semibold' // تم تغيير اللون ليتناسب مع الخلفية البيضاء
+                        ? 'bg-purple-100 text-purple-700 font-semibold' 
                         : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                   >
@@ -114,7 +126,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* Sign Out Section */}
-          <div className="border-t border-gray-200 pt-6">
+          <div className="border-t border-gray-200 pt-6 mt-auto">
+            {/* باقي الكود هنا... */}
             <div className="mb-4 p-3 bg-gray-50 rounded-lg">
               <p className="text-xs text-gray-500 mb-1">Signed in as</p>
               <p className="text-sm font-medium text-gray-900 truncate">{user.email}</p>
@@ -131,9 +144,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* 2. Main Content Area */}
-      {/* 💡 تم تصحيح الـ layout لضمان أن المحتوى يملأ المساحة المتبقية */}
+      {/* 💡 إصلاح 4: جعل المحتوى الرئيسي قابلاً للتمرير عمودياً */}
       <div className={`
-          flex flex-col flex-1 min-w-0 
+          flex flex-col flex-1 min-w-0 h-full overflow-y-auto 
           lg:ml-64 
           transition-all duration-300
       `}>
@@ -141,18 +154,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Top Bar for Mobile */}
         <header className="sticky top-0 z-40 bg-white border-b border-gray-200 p-4 lg:hidden">
           <div className="flex items-center">
-              <button 
+              <button 
                 className="text-gray-700 hover:text-gray-900 p-1" 
                 onClick={() => setIsSidebarOpen(true)}
               >
                 <Menu className="w-6 h-6" />
               </button>
               <h2 className="ml-4 font-semibold text-gray-900">Dashboard</h2>
-          </div>
+          </div>
         </header>
 
         {/* Main Content */}
-        <main className="flex-grow p-4 sm:p-6 lg:p-8">
+        {/* 💡 إصلاح 5: حذف p-4/sm:p-6/lg:p-8 من هنا لنضيفه لاحقاً في page.tsx */}
+        <main className="flex-grow">
           {children}
         </main>
       </div>
