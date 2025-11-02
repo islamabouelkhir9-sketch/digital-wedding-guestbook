@@ -27,12 +27,121 @@ const cleanStoragePath = (path: string | null): string | null => {
     return cleaned;
 };
 
+// 📌 مكون زر الإجراءات (ActionButton) - *جديد*
+// يُستخدم لتبسيط كود عرض الرسائل
+const ActionButton = ({ onClick, status, IconOn, IconOff, titleOn, titleOff, colorOn, colorOff, isToggle = true, fillOn = false }: any) => {
+    const Icon = (isToggle && !status) ? IconOff : IconOn;
+    const title = (isToggle && !status) ? titleOff : titleOn;
+    const color = (isToggle && !status) ? colorOff : colorOn;
+    const fill = (isToggle && status && fillOn) ? 'fill-current' : '';
+
+    return (
+        <button
+            onClick={onClick}
+            className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${color}`}
+            title={title}
+        >
+            <Icon className={`w-4 h-4 ${fill}`} />
+        </button>
+    );
+};
+
+// 📌 مكون عرض الوسائط (SubmissionMediaViewer) - *جديد*
+function SubmissionMediaViewer({ submission }: { submission: Submission }) {
+    const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    const loadMedia = async () => {
+        if (!submission.storage_path) {
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        const cleanedPath = cleanStoragePath(submission.storage_path);
+
+        if (!cleanedPath) {
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // توقيع الرابط لتمكين الوصول المؤقت
+            const { data, error } = await supabase.storage
+                .from('guestbook-media')
+                .createSignedUrl(cleanedPath, 3600); // 1 hour expiration
+
+            if (error) {
+                console.error('*** Supabase Signed URL Error (CRITICAL):', error.message);
+            }
+            
+            if (data?.signedUrl) { 
+                setMediaUrl(data.signedUrl); 
+            } else {
+                console.error('❌ Signed URL data not received or invalid.');
+            }
+        } catch (error) {
+            console.error('🚨 Generic Error loading media:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadMedia();
+    }, [submission.storage_path]); 
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center p-3 bg-gray-50 rounded-lg text-gray-600 text-sm font-medium">
+                <Loader2 className="w-4 h-4 animate-spin text-purple-500 mr-2" />
+                <p>Loading {submission.type}...</p>
+            </div>
+        );
+    }
+    
+    if (mediaUrl) {
+        if (submission.type === 'voice') {
+            return (
+                <audio controls className="w-full rounded-lg">
+                    <source src={mediaUrl} />
+                    Your browser does not support the audio element.
+                </audio>
+            );
+        }
+
+        if (submission.type === 'image') {
+            return (
+                <img 
+                    src={mediaUrl} 
+                    alt="Submission" 
+                    className="w-full rounded-lg max-h-80 object-contain bg-gray-100"
+                />
+            );
+        }
+
+        if (submission.type === 'video') {
+            return (
+                <video controls className="w-full rounded-lg max-h-80">
+                    <source src={mediaUrl} />
+                    Your browser does not support the video tag.
+                </video>
+            );
+        }
+    }
+    
+    return (
+        <div className="p-3 bg-red-50 text-red-600 rounded-lg text-xs font-medium">
+            Failed to load {submission.type}. Check RLS policy on **Storage Bucket (guestbook-media)**.
+        </div>
+    );
+}
+
 // 📌 بداية مكون الصفحة الرئيسية
 export default function SubmissionsPage() {
     const router = useRouter();
     const [submissions, setSubmissions] = useState<Submission[]>([]);
     const [groupedSubmissions, setGroupedSubmissions] = useState<Record<string, Submission[]>>({});
-    // 💡 التعديل: لن يتم عرض التفاصيل إلا بعد اختيار مرسل
     const [selectedSender, setSelectedSender] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
@@ -58,7 +167,6 @@ export default function SubmissionsPage() {
             console.log('✅ SUBMISSIONS LOAD SUCCESS:', data.length, 'submissions loaded.'); 
             
             setSubmissions(data || []);
-            // setSelectedSender(null); // لا نحتاج لإعادة التعيين هنا، التجميع سيقوم بذلك
         } catch (error: any) {
             console.error('Error loading submissions (Possible RLS on submissions):', error.message || error);
             setError('Failed to load submissions. (Check RLS on "submissions" table)');
@@ -67,7 +175,6 @@ export default function SubmissionsPage() {
         }
     };
     
-    // 💡 تم تحويل الدالة إلى useCallback لضمان الاستقرار (Best Practice)
     const checkUserAndLoadData = useCallback(async () => {
         setLoading(true);
         setError(null);
@@ -189,6 +296,7 @@ export default function SubmissionsPage() {
             // تحديث القائمة المحلية
             setSubmissions(prev => prev.filter(sub => sub.id !== id));
             // إذا كان هذا آخر إرسال لهذا المرسل، نعود إلى قائمة المرسلين
+            const senderName = submissions.find(sub => sub.id === id)?.sender_name;
             if (selectedSender && groupedSubmissions[selectedSender]?.length === 1) {
                 setSelectedSender(null);
             }
@@ -223,19 +331,29 @@ export default function SubmissionsPage() {
         }
     };
 
+    // التجميع حسب المرسل يحدث في كل مرة تتغير فيها 'submissions'
     useEffect(() => {
-        // Group submissions by sender
         const grouped = submissions.reduce((acc, submission) => {
             const sender = submission.sender_name;
             if (!acc[sender]) {
                 acc[sender] = [];
             }
+            // ضمان الترتيب العكسي حسب تاريخ الإنشاء داخل كل مجموعة (الأحدث أولاً)
             acc[sender].push(submission);
             return acc;
         }, {} as Record<string, Submission[]>);
 
+        // فرز الرسائل داخل كل مجموعة حسب التاريخ مرة أخرى بعد التجميع لضمان الترتيب
+        Object.keys(grouped).forEach(sender => {
+            grouped[sender].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        });
+
         setGroupedSubmissions(grouped);
-    }, [submissions]);
+        // إعادة تعيين المرسل المختار إذا كان قد تم حذفه
+        if (selectedSender && !grouped[selectedSender]) {
+            setSelectedSender(null);
+        }
+    }, [submissions, selectedSender]);
 
     const filteredSenders = Object.keys(groupedSubmissions)
         .filter(sender => sender.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -247,6 +365,7 @@ export default function SubmissionsPage() {
             case 'voice': return <Mic className="w-4 h-4" />;
             case 'image': return <ImageIcon className="w-4 h-4" />;
             case 'video': return <Video className="w-4 h-4" />;
+            default: return <MessageSquare className="w-4 h-4" />;
         }
     };
 
@@ -282,10 +401,8 @@ export default function SubmissionsPage() {
     }
 
     return (
-        // 💡 التعديل: تقليل الـ padding على الموبايل وزيادته تدريجياً
         <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto min-h-screen">
             {/* Header */}
-            {/* 💡 التعديل: جعل زر الخروج أصغر وأكثر تجاوبًا على الموبايل */}
             <div className="mb-6 md:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className='flex-1 min-w-0'>
                     <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">Submissions</h1>
@@ -301,12 +418,9 @@ export default function SubmissionsPage() {
             </div>
 
             {/* Main Content: Two-Column Layout (Responsive) */}
-            {/* 💡 التعديل الأهم: Grid يصبح عمودًا واحدًا على الموبايل (lg:grid-cols-12) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
                 {/* Sender List (Sidebar) */}
-                {/* 💡 التعديل: يُعرض كشاشة كاملة على الموبايل إذا لم يتم تحديد مرسل (hidden / block)
-                    ويصبح شريطًا جانبيًا ثابتًا على الشاشات الكبيرة (lg:col-span-4) */}
                 <div 
                     className={`
                         ${selectedSender ? 'hidden lg:block' : 'block'} 
@@ -371,8 +485,6 @@ export default function SubmissionsPage() {
                 </div>
 
                 {/* Submission Details */}
-                {/* 💡 التعديل: يُعرض كشاشة كاملة على الموبايل فقط عند تحديد مرسل (block / hidden)
-                    ويصبح المحتوى الرئيسي على الشاشات الكبيرة (lg:col-span-8) */}
                 <div 
                     className={`
                         ${selectedSender ? 'block' : 'hidden lg:block'} 
@@ -390,7 +502,7 @@ export default function SubmissionsPage() {
                         </div>
                     ) : (
                         <div>
-                            {/* 💡 التعديل: إضافة زر العودة (Back) على الموبايل */}
+                            {/* Header for Details Section */}
                             <div className="flex items-center justify-between mb-6">
                                 <div className='flex items-center'>
                                     <button 
@@ -409,6 +521,7 @@ export default function SubmissionsPage() {
                                 </div>
                             </div>
 
+                            {/* List of Submissions for the Selected Sender */}
                             <div className="space-y-4 max-h-[calc(100vh-280px)] overflow-y-auto lg:max-h-[600px]">
                                 {groupedSubmissions[selectedSender]?.map((submission) => (
                                     <motion.div
@@ -427,7 +540,7 @@ export default function SubmissionsPage() {
                                                     <p className="text-xs text-gray-500">{formatDate(submission.created_at)}</p>
                                                 </div>
                                             </div>
-                                            {/* 💡 التعديل: تجميع أزرار الإجراءات في شريط واحد */}
+                                            {/* Action Buttons using the new component */}
                                             <div className="flex items-center gap-1.5 flex-wrap justify-end">
                                                 <ActionButton 
                                                     onClick={() => toggleFavorite(submission.id, submission.is_favorite)}
@@ -469,6 +582,7 @@ export default function SubmissionsPage() {
                                             </div>
                                         </div>
 
+                                        {/* Content Display */}
                                         {submission.type === 'text' && (
                                             <div className="mt-3 p-3 bg-gray-50 rounded-lg">
                                                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{submission.content}</p>
@@ -493,113 +607,6 @@ export default function SubmissionsPage() {
                     )}
                 </div>
             </div>
-        </div>
-    );
-}
-
-// 💡 مكون جديد (Action Button) لتنظيف الكود وجعله أكثر قراءة
-const ActionButton = ({ onClick, status, IconOn, IconOff, titleOn, titleOff, colorOn, colorOff, isToggle = true, fillOn = false }: any) => {
-    const Icon = (isToggle && !status) ? IconOff : IconOn;
-    const title = (isToggle && !status) ? titleOff : titleOn;
-    const color = (isToggle && !status) ? colorOff : colorOn;
-    const fill = (isToggle && status && fillOn) ? 'fill-current' : '';
-
-    return (
-        <button
-            onClick={onClick}
-            className={`p-1.5 rounded-lg transition-colors flex-shrink-0 ${color}`}
-            title={title}
-        >
-            <Icon className={`w-4 h-4 ${fill}`} />
-        </button>
-    );
-};
-
-
-// 📌 مكون عرض الوسائط (SubmissionMediaViewer) - تم تضمينه لسهولة النسخ واللصق
-function SubmissionMediaViewer({ submission }: { submission: Submission }) {
-    const [mediaUrl, setMediaUrl] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    const loadMedia = async () => {
-        if (!submission.storage_path) {
-            setLoading(false);
-            return;
-        }
-
-        setLoading(true);
-        const cleanedPath = cleanStoragePath(submission.storage_path);
-
-        if (!cleanedPath) {
-            setLoading(false);
-            return;
-        }
-
-        try {
-            const { data, error } = await supabase.storage
-                .from('guestbook-media')
-                .createSignedUrl(cleanedPath, 3600); 
-
-            if (error) {
-                console.error('*** Supabase Signed URL Error (CRITICAL):', error.message);
-            }
-            
-            if (data?.signedUrl) { 
-                setMediaUrl(data.signedUrl); 
-            } else {
-                console.error('❌ Signed URL data not received or invalid.');
-            }
-        } catch (error) {
-            console.error('🚨 Generic Error loading media:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadMedia();
-    }, [submission.storage_path]); 
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center p-3 bg-gray-50 rounded-lg text-gray-600 text-sm font-medium">
-                <Loader2 className="w-4 h-4 animate-spin text-purple-500 mr-2" />
-                <p>Loading {submission.type}...</p>
-            </div>
-        );
-    }
-    
-    if (mediaUrl) {
-        if (submission.type === 'voice') {
-            return (
-                <audio controls className="w-full">
-                    <source src={mediaUrl} />
-                </audio>
-            );
-        }
-
-        if (submission.type === 'image') {
-            return (
-                <img 
-                    src={mediaUrl} 
-                    alt="Submission" 
-                    className="w-full rounded-lg max-h-80 object-contain bg-gray-100" // تم تقليل الارتفاع ليتناسب مع الموبايل
-                />
-            );
-        }
-
-        if (submission.type === 'video') {
-            return (
-                <video controls className="w-full rounded-lg max-h-80">
-                    <source src={mediaUrl} />
-                </video>
-            );
-        }
-    }
-    
-    return (
-        <div className="p-3 bg-red-50 text-red-600 rounded-lg text-xs font-medium">
-            Failed to load {submission.type}. Check RLS policy on **Storage Bucket (guestbook-media)**.
         </div>
     );
 }
