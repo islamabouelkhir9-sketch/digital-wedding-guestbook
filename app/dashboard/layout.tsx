@@ -1,183 +1,216 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/AuthContext';
-import { Heart, LayoutDashboard, FolderOpen, Settings, LogOut, Loader2, Presentation, Menu, X } from 'lucide-react';
+"use client";
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { Heart, LayoutDashboard, FolderOpen, Settings, LogOut, Presentation, Menu, X } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+
+// DashboardLayout.tsx
+// - RTL-ready layout
+// - Wedding theme: Pink → Purple diagonal soft gradient
+// - Built-in dark-mode support (Tailwind's `dark` class assumed)
+// - Off-canvas sidebar for mobile, fixed sidebar for desktop
+// - Accessible controls and scroll-lock when sidebar open
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { user, loading, signOut } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, loading, signOut } = useAuth();
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) || false;
+  });
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-    setIsSidebarOpen(false); 
-    
-    // 💡 إصلاح 1: تعطيل تمرير الجسم عند فتح القائمة الجانبية على الجوال
-    if (isSidebarOpen && window.innerWidth < 1024) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'auto';
-    }
+  // redirect if not authenticated
+  useEffect(() => {
+    if (!loading && !user) router.push('/login');
+  }, [user, loading, router]);
 
-    return () => {
-      // إعادة تفعيل التمرير عند إزالة المكون
-      document.body.style.overflow = 'auto'; 
-    };
+  // lock body scroll when sidebar open on small screens
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (isSidebarOpen && window.innerWidth < 1024) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
 
-  }, [user, loading, router, pathname, isSidebarOpen]); // أضفت isSidebarOpen كاعتماد
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isSidebarOpen]);
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      router.push('/login');
-    } catch (error) {
-      console.error('Sign out error:', error);
-    }
-  };
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.push('/login');
+    } catch (e) {
+      console.error('Sign out error', e);
+    }
+  };
 
-  // --- شاشة التحميل والمستخدم غير المسجل ---
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-purple-500" />
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0b1220]">
+        <div className="text-center">
+          <div className="animate-spin w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-purple-600 mb-4" />
+          <p className="text-gray-600 dark:text-gray-300">Loading…</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (!user) {
-    return null;
-  }
-  // --------------------------------------------
+  if (!user) return null;
 
-  const navItems = [
-    { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
-    { href: '/dashboard/submissions', icon: FolderOpen, label: 'Submissions' },
-    { href: '/dashboard/slideshow', icon: Presentation, label: 'Slideshow' },
-    { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
-  ];
+  const navItems = [
+    { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
+    { href: '/dashboard/submissions', icon: FolderOpen, label: 'Submissions' },
+    { href: '/dashboard/slideshow', icon: Presentation, label: 'Slideshow' },
+    { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
+  ];
 
-// 💡 إصلاح 2: إضافة h-screen لضمان أن الحاوية الرئيسية تغطي الشاشة بالكامل (تم نقل التعليق إلى هنا)
-  return (
-    <div className="flex h-screen bg-gray-50"> 
-      
-      {/* 1. Sidebar (Fixed on Desktop, Off-Canvas on Mobile) */}
-      <aside className={`
-        fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-50 flex-shrink-0
-        transition-transform duration-300 ease-in-out
-        ${isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
-        lg:translate-x-0 lg:sticky 
-      `}>
-        
-        <button 
-          className="absolute top-3 right-3 lg:hidden text-gray-400 hover:text-gray-700 p-2 z-50 bg-white/50 rounded-full" 
-          onClick={() => setIsSidebarOpen(false)}
-        >
-          <X className="w-5 h-5" />
-        </button>
+  return (
+    <div className={`${isDark ? 'dark' : ''}`} dir="rtl">
+      {/* Theme variables + utility styles — you can move these to global.css */}
+      <style jsx global>{`
+        :root {
+          /* Primary wedding palette (pink -> purple diagonal soft) */
+          --wedding-pink: #fb7185;
+          --wedding-purple: #7c3aed;
+          --wedding-50: #fff8fb;
+          --card-bg: #ffffff;
+          --muted: #6b7280;
+        }
 
-        {/* 💡 إصلاح 3: جعل محتوى الشريط الجانبي قابلاً للتمرير إذا أصبح طويلاً جداً */}
-        <div className="p-6 h-full w-full flex flex-col justify-between overflow-y-auto">
-          
-          {/* Header & Navigation */}
-          <div>
-            {/* باقي الكود هنا... */}
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-purple-500 rounded-lg flex items-center justify-center">
-                <Heart className="w-6 h-6 text-white fill-white" />
-              </div>
-              <div>
-                <h1 className="font-bold text-gray-900">Guestbook</h1>
-                <p className="text-xs text-gray-500">Dashboard</p>
-              </div>
-            </div>
+        /* dark mode overrides */
+        .dark {
+          --card-bg: #071122;
+          --wedding-50: #071122;
+          --muted: #9ca3af;
+        }
 
-            <nav className="space-y-2">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-                
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg transition-all ${
-                      isActive
-                        ? 'bg-purple-100 text-purple-700 font-semibold' 
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
+        /* gradient utility for brand */
+        .brand-gradient {
+          background-image: linear-gradient(135deg, var(--wedding-pink) 0%, var(--wedding-purple) 100%);
+        }
+      `}</style>
 
-          {/* Sign Out Section */}
-          <div className="border-t border-gray-200 pt-6 mt-auto">
-            {/* باقي الكود هنا... */}
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500 mb-1">Signed in as</p>
-              <p className="text-sm font-medium text-gray-900 truncate">{user.email}</p>
-            </div>
-            <button
-              onClick={handleSignOut}
-              className="flex items-center gap-2 w-full px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm"
-            >
-              <LogOut className="w-4 h-4" />
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </aside>
+      <div className="flex h-screen bg-gray-50 dark:bg-[#04060a]">
+        {/* Sidebar */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto bg-white dark:bg-[#071122] border-r border-gray-200 dark:border-gray-800 shadow-lg ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          }`}
+          aria-label="Sidebar navigation"
+        >
+          <div className="h-full flex flex-col justify-between overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 brand-gradient rounded-lg flex items-center justify-center shadow-sm">
+                  <Heart className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="font-bold text-gray-900 dark:text-gray-100">Guestbook</h1>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Dashboard</p>
+                </div>
+              </div>
 
-      {/* 2. Main Content Area */}
-      {/* 💡 إصلاح 4: جعل المحتوى الرئيسي قابلاً للتمرير عمودياً */}
-      <div className={`
-          flex flex-col flex-1 min-w-0 h-full overflow-y-auto 
-          lg:ml-64 
-          transition-all duration-300
-      `}>
+              <nav className="space-y-2">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link key={item.href} href={item.href} className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
+                      isActive
+                        ? 'bg-purple-50 dark:bg-purple-900 text-purple-700 dark:text-purple-300 font-semibold'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-white'
+                    }`}>
+                      <Icon className="w-5 h-5" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
 
-        {/* Top Bar for Mobile */}
-        <header className="sticky top-0 z-40 bg-white border-b border-gray-200 p-4 lg:hidden">
-          <div className="flex items-center">
-              <button 
-                className="text-gray-700 hover:text-gray-900 p-1" 
-                onClick={() => setIsSidebarOpen(true)}
-              >
-                <Menu className="w-6 h-6" />
-              </button>
-              <h2 className="ml-4 font-semibold text-gray-900">Dashboard</h2>
-          </div>
-        </header>
+            <div className="p-6 border-t border-gray-100 dark:border-gray-800">
+              <div className="mb-3 p-3 bg-gray-50 dark:bg-[#07152a] rounded-lg">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Signed in as</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{user?.email}</p>
+              </div>
 
-        {/* Main Content */}
-        {/* 💡 إصلاح 5: حذف p-4/sm:p-6/lg:p-8 من هنا لنضيفه لاحقاً في page.tsx */}
-        <main className="flex-grow">
-          {children}
-        </main>
-      </div>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 w-full px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900 rounded-lg transition-colors text-sm"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </button>
 
-      {/* 3. Overlay for Mobile */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden" 
-          onClick={() => setIsSidebarOpen(false)} 
-        />
-      )}
-    </div>
-  );
+              <div className="mt-4 flex items-center justify-between">
+                <button
+                  onClick={() => setIsDark((s) => !s)}
+                  className="px-3 py-2 rounded-md bg-white/80 dark:bg-white/5 border border-gray-100 dark:border-gray-700 text-sm"
+                >
+                  Toggle Theme
+                </button>
+
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="lg:hidden px-2 py-2 rounded-md bg-white/80 dark:bg-white/5 border border-gray-100 dark:border-gray-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Overlay for mobile when sidebar is open */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-hidden
+          />
+        )}
+
+        {/* Main area */}
+        <div className="flex flex-col flex-1 min-w-0 h-full lg:ml-64">
+          {/* Mobile top bar */}
+          <header className="sticky top-0 z-40 bg-white dark:bg-[#071122] border-b border-gray-100 dark:border-gray-800 lg:hidden">
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsSidebarOpen(true)}
+                  aria-label="Open menu"
+                  className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-white/5"
+                >
+                  <Menu className="w-6 h-6 text-gray-700 dark:text-gray-200" />
+                </button>
+                <h2 className="font-semibold text-gray-900 dark:text-gray-100">Dashboard</h2>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsDark((s) => !s)}
+                  aria-label="Toggle dark mode"
+                  className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-white/5"
+                >
+                  {isDark ? 'Light' : 'Dark'}
+                </button>
+              </div>
+            </div>
+          </header>
+
+          {/* content wrapper — padding controlled by pages */}
+          <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-[#04060a]">
+            <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">{children}</div>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
 }

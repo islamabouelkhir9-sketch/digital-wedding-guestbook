@@ -1,351 +1,318 @@
 'use client';
-
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { MessageSquare, Users, Clock, TrendingUp, Eye, LogOut, Loader2, Link as LinkIcon, ChevronRight } from 'lucide-react'; 
-import { motion } from 'framer-motion';
+import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import {
+  MessageSquare,
+  Eye,
+  Users,
+  TrendingUp,
+  Clock,
+  Loader2,
+  Link as LinkIcon,
+  LogOut,
+  Sun,
+  Moon,
+  ChevronRight,
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export const dynamic = 'force-dynamic';
 
-interface SenderSubmission {
-  sender_name: string;
-}
+/**
+ * Refactored Dashboard Overview
+ * - Mobile-first
+ * - Unified purple accents (C2)
+ * - Dark mode A1 (matches layout)
+ * - Recent submissions preview + View all
+ */
 
-interface Submission {
-  id: string | number;
-  sender_name: string;
-  content?: string | null;
-  created_at: string;
-  moderated: boolean;
-  type: string;
-}
+interface SenderSubmission { sender_name: string }
+interface SubmissionItem { id: string | number; sender_name: string; content?: string | null; created_at: string; moderated: boolean; type: string }
+interface Stats { totalSubmissions: number; unreadSubmissions: number; totalSenders: number; recentSubmissions: SubmissionItem[]; eventSlug: string | null }
 
-interface Stats {
-  totalSubmissions: number;
-  unreadSubmissions: number;
-  totalSenders: number;
-  recentSubmissions: Submission[];
-  eventSlug: string | null;
-}
+const formatDate = (dateString: string) => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return dateString;
+  }
+};
 
-// --- Component ---
-export default function DashboardPage() {
-  const router = useRouter();
+export default function DashboardOverviewPage() {
+  const router = useRouter();
 
-  const [stats, setStats] = useState<Stats>({
-    totalSubmissions: 0,
-    unreadSubmissions: 0,
-    totalSenders: 0,
-    recentSubmissions: [],
-    eventSlug: null,
-  });
-  const [loading, setLoading] = useState<boolean>(true);
-  const [user, setUser] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<Stats>({ totalSubmissions: 0, unreadSubmissions: 0, totalSenders: 0, recentSubmissions: [], eventSlug: null });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
+  useEffect(() => {
+    // sync with prefers-color-scheme and layout toggle
+    const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const onChange = () => setIsDark(media.matches);
+    if (media) {
+      setIsDark(media.matches);
+      media.addEventListener('change', onChange);
+    }
+    return () => media?.removeEventListener('change', onChange);
+  }, []);
 
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      if (typeof window !== 'undefined') router.push('/login');
-    } catch (e) {
-      console.error('Logout failed:', e);
-    }
-  };
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        await loadData(mounted);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+    return () => { mounted = false };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  useEffect(() => {
-    checkUserAndLoadData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await supabase.auth.signOut();
+      router.push('/login');
+    } catch (e) {
+      console.error('Logout failed', e);
+      setError('Logout failed');
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
+  const loadData = async (mounted = true) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: authError } = await supabase.auth.getUser();
+      if (authError) throw new Error(authError.message || 'Auth error');
+      const currentUser = data?.user ?? null;
+      if (!currentUser) {
+        router.push('/login');
+        return;
+      }
 
-  const checkUserAndLoadData = async () => {
-    setLoading(true);
-    setError(null);
+      // fetch couple_id
+      const { data: userData, error: userError } = await supabase.from('users').select('couple_id').eq('id', currentUser.id).single();
+      if (userError || !userData) throw new Error('User profile not found');
+      const coupleId = (userData as any).couple_id;
 
-    try {
-      const { data, error } = await supabase.auth.getUser();
+      // event
+      const { data: eventData, error: eventError } = await supabase.from('events').select('id,slug').eq('couple_id', coupleId).single();
+      if (eventError || !eventData) throw new Error('Event not found');
+      const eventId = (eventData as any).id;
+      const eventSlug = (eventData as any).slug ?? null;
 
-      if (error) throw new Error(error.message || 'Auth error');
+      // parallel queries
+      const totalQ = supabase.from('submissions').select('*', { head: true, count: 'exact' }).eq('event_id', eventId);
+      const unreadQ = supabase.from('submissions').select('*', { head: true, count: 'exact' }).eq('event_id', eventId).eq('moderated', false);
+      const sendersQ = supabase.from('submissions').select('sender_name').eq('event_id', eventId);
+      const recentQ = supabase.from('submissions').select('id,sender_name,content,created_at,moderated,type').eq('event_id', eventId).order('created_at', { ascending: false }).limit(5);
 
-      const currentUser = data?.user ?? null;
-      if (!currentUser) {
-        if (typeof window !== 'undefined') router.push('/login');
-        return;
-      }
+      const [totalRes, unreadRes, sendersRes, recentRes] = await Promise.all([totalQ, unreadQ, sendersQ, recentQ]);
 
-      setUser(currentUser);
-      await loadStats(currentUser);
-    } catch (e: any) {
-      console.error('Auth check error:', e);
-      setError(e?.message ?? 'Authentication check failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+      const totalCount = (totalRes as any).count ?? 0;
+      const unreadCount = (unreadRes as any).count ?? 0;
+      const sendersData = (sendersRes as any).data as SenderSubmission[] | null;
+      const senderNames = (sendersData || []).map(s => s.sender_name);
+      const uniqueSenders = new Set(senderNames);
+      const recentData = (recentRes as any).data as SubmissionItem[] | null;
 
+      if (mounted) {
+        setStats({ totalSubmissions: Number(totalCount) || 0, unreadSubmissions: Number(unreadCount) || 0, totalSenders: uniqueSenders.size, recentSubmissions: recentData || [], eventSlug });
+      }
+    } catch (e: any) {
+      console.error('Dashboard load error', e);
+      if (mounted) setError(e?.message ?? 'Failed loading dashboard');
+    } finally {
+      if (mounted) setLoading(false);
+    }
+  };
 
-  const loadStats = async (currentUser: any) => {
-    try {
-      // 1) get couple_id
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('couple_id')
-        .eq('id', currentUser.id)
-        .single();
+  const statCards = useMemo(() => [
+    { title: 'Total Submissions', value: stats.totalSubmissions, icon: MessageSquare },
+    { title: 'Unread', value: stats.unreadSubmissions, icon: Eye },
+    { title: 'Guests', value: stats.totalSenders, icon: Users },
+    { title: 'Recent', value: stats.recentSubmissions.length, icon: TrendingUp },
+  ], [stats]);
 
-      if (userError || !userData || !(userData as any).couple_id) {
-        throw new Error("User profile not found or couple_id missing.");
-      }
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="flex items-center gap-3">
+        <Loader2 className="w-12 h-12 animate-spin text-purple-500" />
+        <div className="text-gray-700 dark:text-gray-200"><p className="font-medium">Verifying access</p><p className="text-sm">Loading dashboard data…</p></div>
+      </div>
+    </div>
+  );
 
-      const currentCoupleId: string | number = (userData as any).couple_id;
+  if (error) return (
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-red-600 mb-3">Error</h2>
+        <p className="text-gray-700 dark:text-gray-300 mb-4">{error}</p>
+        <div className="flex gap-2 justify-center">
+          <button onClick={() => loadData(true)} className="px-4 py-2 rounded bg-gray-100 dark:bg-neutral-800">Retry</button>
+          <button onClick={handleLogout} className="px-4 py-2 rounded bg-red-600 text-white">Logout</button>
+        </div>
+      </div>
+    </div>
+  );
 
-      // 2) get event for this couple
-      const { data: eventData, error: eventError } = await supabase
-        .from('events')
-        .select('id, title, slug')
-        .eq('couple_id', currentCoupleId)
-        .single();
+  return (
+    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="mb-6 md:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1">Dashboard Overview</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-300 truncate">Welcome back — here’s what’s happening with your guestbook.</p>
+        </div>
 
-      if (eventError || !eventData) {
-        throw new Error("No event linked to this user's couple_id.");
-      }
+        <div className="flex items-center gap-2">
+          {stats.eventSlug && (
+            <a href={`/event/${stats.eventSlug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700">
+              <LinkIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">View Guestbook</span>
+              <span className="sm:hidden">Live</span>
+            </a>
+          )}
 
-      const currentEventId: string | number = (eventData as any).id;
-      const eventSlug: string = (eventData as any).slug;
+          <button onClick={() => setIsDark(s => !s)} aria-label="Toggle theme" className="p-2 rounded-md bg-gray-100 dark:bg-neutral-800">
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
 
-      // 3-6) جميع الاستعلامات الأخرى (كما هي) ...
-      const { count: totalCount } = await supabase
-        .from('submissions')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', currentEventId);
+          <button onClick={handleLogout} disabled={loggingOut} className="ml-1 px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">
+            <LogOut className="w-4 h-4 inline-block mr-2" />
+            {loggingOut ? 'Signing out…' : 'Sign Out'}
+          </button>
+        </div>
+      </div>
 
-      const { count: unreadCount } = await supabase
-        .from('submissions')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', currentEventId)
-        .eq('moderated', false);
+      {/* Stats (unified purple accents) */}
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {statCards.map((s, i) => {
+          const Icon = s.icon;
+          return (
+            <motion.div key={s.title} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 p-4 flex flex-col justify-between h-32">
+              <div className="flex items-start justify-between">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-pink-400 to-purple-600 text-white">
+                  <Icon className="w-5 h-5" />
+                </div>
+              </div>
 
-      const { data: sendersData } = await supabase
-        .from('submissions')
-        .select('sender_name')
-        .eq('event_id', currentEventId);
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{s.value}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{s.title}</p>
+              </div>
+            </motion.div>
+          )
+        })}
+      </section>
 
-      const senderNames = (sendersData as SenderSubmission[] | null)?.map(s => s.sender_name) || [];
-      const uniqueSenders = new Set(senderNames);
+      {/* Quick nav cards */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Link href="/dashboard/submissions" className="block">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl p-4 border border-gray-100 dark:border-neutral-800 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-white">Submissions</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Manage guest messages & media</p>
+              </div>
+              <div className="p-2 rounded-lg bg-gradient-to-br from-pink-400 to-purple-600 text-white">
+                <MessageSquare className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        </Link>
 
-      const { data: recentData } = await supabase
-        .from('submissions')
-        .select('id, sender_name, content, created_at, moderated, type')
-        .eq('event_id', currentEventId)
-        .order('created_at', { ascending: false })
-        .limit(5);
+        <Link href="/dashboard/slideshow" className="block">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl p-4 border border-gray-100 dark:border-neutral-800 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-white">Slideshow</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Create and manage slides</p>
+              </div>
+              <div className="p-2 rounded-lg bg-gradient-to-br from-pink-400 to-purple-600 text-white">
+                <Clock className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        </Link>
 
-      setStats({
-        totalSubmissions: totalCount || 0,
-        unreadSubmissions: unreadCount || 0,
-        totalSenders: uniqueSenders.size,
-        recentSubmissions: (recentData as Submission[]) || [],
-        eventSlug: eventSlug,
-      });
-    } catch (e: any) {
-      console.error('Error loading stats:', e);
-      setError(e?.message ?? 'Error loading stats');
-    }
-  };
+        <Link href="/dashboard/settings" className="block">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl p-4 border border-gray-100 dark:border-neutral-800 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-white">Settings</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Account & event settings</p>
+              </div>
+              <div className="p-2 rounded-lg bg-gradient-to-br from-pink-400 to-purple-600 text-white">
+                <Users className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        </Link>
 
-  // stat cards config
-  const statCards = [
-    {
-      title: 'Total Submissions',
-      value: stats.totalSubmissions,
-      icon: MessageSquare,
-      color: 'from-blue-400 to-blue-600',
-      bgColor: 'bg-blue-50',
-      textColor: 'text-blue-600',
-    },
-    {
-      title: 'Unread Messages',
-      value: stats.unreadSubmissions,
-      icon: Eye,
-      color: 'from-purple-400 to-purple-600',
-      bgColor: 'bg-purple-50',
-      textColor: 'text-purple-600',
-    },
-    {
-      title: 'Total Guests',
-      value: stats.totalSenders,
-      icon: Users,
-      color: 'from-pink-400 to-pink-600',
-      bgColor: 'bg-pink-50',
-      textColor: 'text-pink-600',
-    },
-    {
-      title: 'Recent Activity',
-      value: stats.recentSubmissions.length,
-      icon: TrendingUp,
-      color: 'from-green-400 to-green-600',
-      bgColor: 'bg-green-50',
-      textColor: 'text-green-600',
-    },
-  ];
+        <Link href="/dashboard/analytics" className="block">
+          <div className="bg-white dark:bg-neutral-900 rounded-xl p-4 border border-gray-100 dark:border-neutral-800 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-semibold text-gray-900 dark:text-white">Analytics</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Traffic & conversions</p>
+              </div>
+              <div className="p-2 rounded-lg bg-gradient-to-br from-pink-400 to-purple-600 text-white">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+            </div>
+          </div>
+        </Link>
+      </section>
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return dateString;
-    }
-  };
+      {/* Recent Submissions preview */}
+      <section className="bg-white dark:bg-neutral-900 rounded-xl p-4 sm:p-6 border border-gray-100 dark:border-neutral-800 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-900 dark:text-white">Recent Submissions</h3>
+          <Link href="/dashboard/submissions"><a className="text-sm text-purple-600 hover:text-purple-700 inline-flex items-center gap-1">View all <ChevronRight className="w-3 h-3" /></a></Link>
+        </div>
 
-  // Loading state (كما هو)
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-12 h-12 animate-spin text-purple-500" />
-        <p className="text-gray-600 ml-3">Verifying access and loading data...</p>
-        </div>
-    );
-  }
-
-  // Error state (كما هو)
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center flex-col p-8 text-center">
-        <h1 className="text-2xl font-bold text-red-600 mb-4">Access Error</h1>
-        <p className="text-gray-700 mb-4">{error}</p>
-        <button onClick={handleLogout} className="text-blue-500 hover:underline">
-          Logout
-        </button>
-      </div>
-    );
-  }
-
-  // Main UI
-  return (
-    <div className="w-full p-4 sm:p-6 lg:p-8"> 
-      {/* Header: تم الحفاظ على تصميمك المتقن */}
-      <div className="mb-6 md:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Dashboard Overview</h1>
-          <p className="text-sm text-gray-600 truncate">Welcome back! Here's what's happening with your guestbook.</p>
-        </div>
-        
-                <div className="flex gap-2 w-full sm:w-auto">
-          {stats.eventSlug && (
-            <a 
-              href={`/event/${stats.eventSlug}`} 
-              target="_blank"
-              className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex-shrink-0 w-1/2 sm:w-auto"
-            >
-              <LinkIcon className="w-4 h-4" />
-              <span className="hidden sm:inline">View Guestbook</span>
-              <span className="sm:hidden">View Live</span>
-            </a>
-          )}
-          <button
-            onClick={handleLogout}
-            className="flex items-center justify-center gap-1.5 px-4 py-2.5 text-sm font-semibold bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex-shrink-0 w-1/2 sm:w-auto"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Sign Out</span>
-            <span className="sm:hidden">Sign Out</span>
-          </button>
-        </div>
-      </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <motion.div
-              key={stat.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              
-                            className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 hover:shadow-md transition-shadow flex flex-col justify-between h-32"
-            >
-              
-              <div className="flex items-start justify-between">
-                <div className={`p-2 rounded-lg ${stat.bgColor} flex-shrink-0`}>
-                  <Icon className={`w-5 h-5 ${stat.textColor}`} />
-                </div>
-              </div>
-              
-                            <div>
-                <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stat.value}</h3>
-                <p className="text-xs sm:text-sm text-gray-600">{stat.title}</p>
-              </div>
-              
-            </motion.div>
-          );
-        })}
-      </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 flex flex-col">
-        <div className="flex items-center justify-between mb-4 md:mb-6 flex-shrink-0">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900">Recent Submissions</h2>
-          <a 
-            href="/dashboard/submissions" 
-            className="flex items-center gap-1 text-xs sm:text-sm text-purple-600 hover:text-purple-700 font-medium"
-          >
-            View All <ChevronRight className="w-3 h-3"/>
-          </a>
-        </div>
-
-        {stats.recentSubmissions.length === 0 ? (
-          <div className="text-center py-8">
-            <MessageSquare className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-            <p className="text-gray-500 text-sm">No submissions yet</p>
-          </div>
-        ) : (
-          <> {/* Fragment لحل مشكلة الـ Conditional Rendering */}
-                                    <div className="space-y-3 overflow-y-auto max-h-[30vh] md:max-h-[50vh] pr-2">
-              {stats.recentSubmissions.map((submission) => (
-                <a
-                  href={`/dashboard/submissions?id=${submission.id}`} // رابط توجيهي للمراجعة
-                  key={submission.id}
-                  className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100 cursor-pointer"
-                >
-                  <div className={`p-1.5 rounded-lg ${submission.moderated ? 'bg-green-50' : 'bg-yellow-50'} flex-shrink-0`}>
-                    <MessageSquare className={`w-4 h-4 ${submission.moderated ? 'text-green-600' : 'text-yellow-600'}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2 mb-1">
-                      <h4 className="font-semibold text-sm text-gray-900 truncate">{submission.sender_name}</h4>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium w-fit sm:w-auto ${
-                          submission.moderated ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                        }`}
-                      >
-                        {submission.moderated ? 'Approved' : 'Pending'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600 line-clamp-2">
-                      {submission.type === 'text'
-                        ? submission.content
-                        : `${submission.type.charAt(0).toUpperCase() + submission.type.slice(1)} message`}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500">
-                      <Clock className="w-3 h-3" />
-                      {formatDate(submission.created_at)}
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                </a>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
+        {stats.recentSubmissions.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            No submissions yet
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full table-auto text-left border-collapse">
+              <thead>
+                <tr className="text-xs text-gray-500 dark:text-gray-400">
+                  <th className="py-2 pr-4">Sender</th>
+                  <th className="py-2 pr-4">Type</th>
+                  <th className="py-2 pr-4">Preview</th>
+                  <th className="py-2 pr-4">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
+                {stats.recentSubmissions.map((s) => (
+                  <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-neutral-800 transition-colors">
+                    <td className="py-3 pr-4">
+                      <div className="font-medium text-gray-900 dark:text-white truncate max-w-[220px]">{s.sender_name}</div>
+                    </td>
+                    <td className="py-3 pr-4 text-sm text-gray-600 dark:text-gray-300 capitalize">{s.type}</td>
+                    <td className="py-3 pr-4 text-sm text-gray-600 dark:text-gray-300 line-clamp-2 max-w-[420px]">{s.type === 'text' ? (s.content ?? '-') : `${s.type.charAt(0).toUpperCase() + s.type.slice(1)} message`}</td>
+                    <td className="py-3 pr-4 text-xs text-gray-500 dark:text-gray-400">{formatDate(s.created_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </div>
+  );
 }
